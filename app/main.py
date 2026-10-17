@@ -51,16 +51,35 @@ def health():
         )
 
 
+
 @app.get("/cache/{key}")
 def get_cache(key: str):
     try:
         value = redis_client.get(key)
+        cache_hit = value is not None
+
+        logger.info(
+            "Cache lookup completed",
+            extra={
+                "event_type": "cache_lookup",
+                "cache_status": "hit" if cache_hit else "miss",
+            },
+        )
+
         return {
             "key": key,
             "value": value,
-            "cache_hit": value is not None
+            "cache_hit": cache_hit
         }
+
     except redis.RedisError:
+        logger.exception(
+            "Redis cache lookup failed",
+            extra={
+                "event_type": "cache_lookup_failed",
+                "error_code": "REDIS_ERROR",
+            },
+        )
         raise HTTPException(
             status_code=503,
             detail="Redis is unavailable"
@@ -71,13 +90,30 @@ def get_cache(key: str):
 def set_cache(key: str, value: str):
     try:
         redis_client.set(key, value, ex=3600)
+
+        logger.info(
+            "Cache value saved",
+            extra={
+                "event_type": "cache_write",
+            },
+        )
+
         return {
             "key": key,
             "saved": True,
             "expires_in_seconds": 3600
         }
+
     except redis.RedisError:
+        logger.exception(
+            "Redis cache write failed",
+            extra={
+                "event_type": "cache_write_failed",
+                "error_code": "REDIS_ERROR",
+            },
+        )
         raise HTTPException(
             status_code=503,
             detail="Redis is unavailable"
         )
+
