@@ -4,8 +4,15 @@ import os
 import redis
 from fastapi import FastAPI, HTTPException
 from prometheus_fastapi_instrumentator import Instrumentator
+from app.logging_config import configure_logging, logger
 
+configure_logging()
+logger.info(
+    "ModelRoute application initialized",
+    extra={"event_type": "application_started"}
+)
 app = FastAPI(title="ModelRoute API")
+
 
 redis_client = redis.Redis(
     host=os.getenv("REDIS_HOST", "localhost"),
